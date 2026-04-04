@@ -1,0 +1,15 @@
+{
+    "ae_tool": "AEExporter:1.4.8",
+    "bALG_BACH_CONFIG": false,
+    "effect": {
+        "Link": [
+            {
+                "path": "AmazingFeature/",
+                "type": "AmazingFeature",
+                "zorder": 8029
+            }
+        ]
+    },
+    "name": "AE2Effect_20250211161820149",
+    "version": "14.8.0"
+}

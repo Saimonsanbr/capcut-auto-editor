@@ -1,0 +1,15 @@
+{
+	"content" : {},
+	"requirement" : 
+	{
+		"3dFaceMeshPerspective" : false,
+		"FaceAttributes" : false,
+		"faceDetect" : false,
+		"faceVerify" : false,
+		"hairColor" : false,
+		"handDetect" : false,
+		"matting" : false
+	},
+	"tag" : "AMG_1068367628151104360611282752008139881910",
+	"version" : "1.0"
+}

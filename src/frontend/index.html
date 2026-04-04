@@ -1,0 +1,54 @@
+<!DOCTYPE strict>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CapCut Auto Editor</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>CapCut Auto Editor</h1>
+            <div id="btn-logs" class="logs-icon" title="Ver logs do sistema">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6C4.89 2 4 2.89 4 4V20C4 21.11 4.89 22 6 22H18C19.11 22 20 21.11 20 20V8L14 2M16 18H8V16H16V18M16 14H8V12H16V14M13 9V3.5L18.5 9H13Z"/></svg>
+            </div>
+        </div>
+        <p>Selecione um ou mais projetos para realizar a Edição Mágica.</p>
+    </header>
+
+    <main class="container">
+        <div id="loading" class="loading">Carregando projetos...</div>
+        <div id="projects-grid" class="projects-grid" style="display: none;">
+            <!-- Projetos vão aqui -->
+        </div>
+    </main>
+
+    <div id="action-bar" class="action-bar">
+        <span id="selected-count">0 selecionados</span>
+        <button id="btn-magic" class="btn-primary">Edição Mágica ✨</button>
+    </div>
+
+    <!-- Modal de Logs -->
+    <div id="logs-modal" class="modal">
+        <div class="modal-content logs-content">
+            <h2>Logs do Sistema</h2>
+            <div id="logs-container" class="logs-container">
+            </div>
+            <button id="btn-close-logs" class="btn-secondary">Fechar</button>
+        </div>
+    </div>
+
+    <!-- Modal de Progresso -->
+    <div id="progress-modal" class="modal">
+        <div class="modal-content">
+            <h2>Processando...</h2>
+            <p id="progress-msg">Iniciando a edição dos projetos selecionados.</p>
+            <div class="spinner"></div>
+            <button id="btn-close-modal" class="btn-secondary" style="display: none;">Fechar</button>
+        </div>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>

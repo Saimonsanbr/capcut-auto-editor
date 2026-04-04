@@ -1,0 +1,16 @@
+node_modules/
+dist/
+release/
+out/
+.DS_Store
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env
+.idea/
+.vscode/
+
+# Se você clonar os efeitos pesados para assets/effects, talvez queira ignorá-los no git para o repo não ficar gigante. 
+# Remova o # da linha abaixo se quiser ignorar a pasta de efeitos no github:
+# assets/effects/

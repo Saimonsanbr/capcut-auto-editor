@@ -1,0 +1,44 @@
+{
+  "name": "app_electron",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "build": {
+    "appId": "com.saimosan.capcutauto",
+    "productName": "CapCut Auto Editor",
+    "directories": {
+      "output": "dist"
+    },
+    "mac": {
+      "category": "public.app-category.video",
+      "icon": "build/icon.png"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ]
+  },
+  "devDependencies": {
+    "electron": "^41.1.1",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "uuid": "^13.0.0"
+  }
+}

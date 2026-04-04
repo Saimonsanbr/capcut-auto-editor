@@ -1,0 +1,54 @@
+{
+    "effect": [
+               {
+               "name": "glitch0",
+               "vertexShader": "resource1/shader/VerticalGlitch0.vert",
+               "vUniforms": [],
+               "fragmentShader": "resource1/shader/VerticalGlitch0.frag",
+               "fUniforms": [
+                               {
+                                   "name": "time",
+                                   "type": 302
+                               },
+                               {
+                                "name": "progress",
+                                "type": 3007,
+                                "timeType": 2,
+                                "keyframes": [
+                                    {
+                                        "time": 0.0,
+                                        "value": 0.0,
+                                        "function": "Linear"
+                                    },
+                                    {
+                                        "time": 1.0,
+                                        "value": 1.0,
+                                        "function": "Linear"
+                                    }
+                                ]
+                              },
+                              {
+                                "name": "strength",
+                                "type": 3,
+                                "data": [0.4]
+                              },
+                              {
+                                  "name": "inputImageTexture",
+                                  "type": 103,
+                                  "inputTextureIndex": 0
+                              },
+                              {
+                                  "name": "inputImageTexture2",
+                                  "type": 103,
+                                  "inputTextureIndex": 1
+                              }                                                                                                                    
+                             ]
+               }                                
+               ],
+    "version": 1.0
+}
+
+
+
+
+
