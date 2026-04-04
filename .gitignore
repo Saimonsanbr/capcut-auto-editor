@@ -10,8 +10,9 @@ yarn-error.log*
 .env
 .idea/
 .vscode/
-arquivos_teste/
 
-# Se você clonar os efeitos pesados para assets/effects, talvez queira ignorá-los no git para o repo não ficar gigante. 
+# Ignore pastas de teste e arquivos pesados locais
+arquivos-teste/
+windows-jsons/
 # Remova o # da linha abaixo se quiser ignorar a pasta de efeitos no github:
 # assets/effects/

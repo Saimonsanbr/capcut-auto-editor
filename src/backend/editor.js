@@ -8,7 +8,7 @@ function addFadeAnimation(data, animDef, startOffset, duration) {
     const animId = generateUUID();
     data.materials = data.materials || {};
     data.materials.material_animations = data.materials.material_animations || [];
-    
+
     data.materials.material_animations.append ? data.materials.material_animations.push : null; // just safety 
     data.materials.material_animations.push({
         id: animId, type: "sticker_animation",
@@ -28,7 +28,7 @@ function addTransition(data, transitionDef, duration = 466666) {
     const transUuid = generateUUID();
     data.materials = data.materials || {};
     data.materials.transitions = data.materials.transitions || [];
-    
+
     data.materials.transitions.push({
         id: transUuid, type: "transition", name: transitionDef.name,
         effect_id: transitionDef.effect_id, resource_id: transitionDef.effect_id,
@@ -44,7 +44,7 @@ function addEffectSegment(data, effectDef, startTime, durationUs) {
     const effMatId = generateUUID();
     data.materials = data.materials || {};
     data.materials.video_effects = data.materials.video_effects || [];
-    
+
     data.materials.video_effects.push({
         id: effMatId, effect_id: effectDef.effect_id, resource_id: effectDef.effect_id,
         name: effectDef.name, type: "video_effect", sub_type: 0, bind_segment_id: "",
@@ -54,7 +54,7 @@ function addEffectSegment(data, effectDef, startTime, durationUs) {
         adjust_params: effectDef.adjusts, time_range: null, enable_mask: true, effect_mask: [],
         enable_video_mask_stroke: true, enable_video_mask_shadow: true
     });
-    
+
     return {
         id: generateUUID(), source_timerange: null,
         target_timerange: { start: startTime, duration: durationUs },
@@ -77,7 +77,7 @@ function addEffectSegment(data, effectDef, startTime, durationUs) {
 }
 
 function getBaseMaterial(data, materialId) {
-    if(!data.materials || !data.materials.videos) return null;
+    if (!data.materials || !data.materials.videos) return null;
     return data.materials.videos.find(m => m.id === materialId) || null;
 }
 
@@ -96,7 +96,7 @@ function processTimelineData(data) {
     const tracks = data.tracks || [];
     let mainVideoTrack = null;
     let audioTrack = null;
-    
+
     for (const t of tracks) {
         let flag = t.flag !== undefined ? t.flag : 0;
         if (t.type === "video" && flag === 0 && !mainVideoTrack) {
@@ -118,17 +118,17 @@ function processTimelineData(data) {
             if (end > audioDurationUs) audioDurationUs = end;
         }
     }
-    
+
     if (audioDurationUs === 0) {
         audioDurationUs = 60000000;
     }
 
     const targetDur = audioDurationUs + 2500000;
-    
+
     data.materials.material_animations = [];
     data.materials.transitions = [];
     data.materials.video_effects = [];
-    
+
     let bgSegments = [];
     let fgSegments = [];
     let effectSegments = [];
@@ -141,7 +141,7 @@ function processTimelineData(data) {
 
         let slot = getRandomInt(4000000, 7000000);
         let isLast = false;
-        
+
         if (currentTime + slot >= targetDur) {
             slot = targetDur - currentTime;
             isLast = true;
@@ -149,7 +149,7 @@ function processTimelineData(data) {
 
         const matId = seg.material_id;
         const baseMat = getBaseMaterial(data, matId);
-        
+
         if (!baseMat) continue;
 
         const isVideo = baseMat.has_audio === true;
@@ -195,7 +195,7 @@ function processTimelineData(data) {
                 let segFg = Object.assign({}, segBg, { clip: {} });
                 segFg.id = generateUUID();
                 segFg.extra_material_refs = [];
-                
+
                 let low = parseFloat(getRandomFloat(0.70, 0.80).toFixed(4));
                 let high = parseFloat(getRandomFloat(0.81, 0.90).toFixed(4));
                 let [s, e] = Math.random() > 0.5 ? [low, high] : [high, low];
@@ -212,7 +212,7 @@ function processTimelineData(data) {
                 let low = parseFloat(getRandomFloat(1.00, 1.07).toFixed(4));
                 let high = parseFloat(getRandomFloat(1.08, 1.15).toFixed(4));
                 let [s, e] = Math.random() > 0.5 ? [low, high] : [high, low];
-                
+
                 segBg.clip.scale = { x: s, y: s };
                 segBg.clip.alpha = 1.0;
                 segBg.common_keyframes = createScaleKeyframes(s, e, slot);
@@ -256,35 +256,51 @@ function processTimelineData(data) {
     data.tracks = newTracks;
     data.duration = currentTime;
     data.update_time = Math.floor(Date.now() * 1000);
-    
+
     return currentTime;
 }
 
 async function findTimelineJson(projectDir) {
+    // 1. Padrão CapCut Novo (Windows/Atualizações Recentes): Arquivo draft_content.json na raiz
+    let contentPath = path.join(projectDir, 'draft_content.json');
+    let contentStats = await fs.stat(contentPath).catch(() => null);
+    if (contentStats) {
+        return contentPath;
+    }
+
+    // 2. Padrão Antigo: Fica dentro da pasta Timelines/
     const timelinesDir = path.join(projectDir, 'Timelines');
     let dirStats = await fs.stat(timelinesDir).catch(() => null);
-    
+
+    // Se não tiver pasta Timelines, testa o modo legado draft_info.json na raiz
     if (!dirStats) {
-        return path.join(projectDir, 'draft_info.json');
+        let legacyPath = path.join(projectDir, 'draft_info.json');
+        let legacyStats = await fs.stat(legacyPath).catch(() => null);
+        return legacyStats ? legacyPath : null;
     }
 
     const layoutPath = path.join(projectDir, 'timeline_layout.json');
     let layoutStats = await fs.stat(layoutPath).catch(() => null);
-    
+
     if (layoutStats) {
-        const layoutRaw = await fs.readFile(layoutPath, 'utf-8');
-        const layout = JSON.parse(layoutRaw);
-        
-        for (const dock of (layout.dockItems || [])) {
-            for (const tid of (dock.timelineIds || [])) {
-                let candidate = path.join(timelinesDir, tid, 'draft_info.json');
-                let candStat = await fs.stat(candidate).catch(() => null);
-                if (candStat) return candidate;
+        try {
+            const layoutRaw = await fs.readFile(layoutPath, 'utf-8');
+            const layout = JSON.parse(layoutRaw);
+
+            for (const dock of (layout.dockItems || [])) {
+                for (const tid of (dock.timelineIds || [])) {
+                    let candidate = path.join(timelinesDir, tid, 'draft_info.json');
+                    let candStat = await fs.stat(candidate).catch(() => null);
+                    if (candStat) return candidate;
+                }
             }
+        } catch (e) {
+            console.error("Falha ao ler timeline_layout", e);
         }
     }
 
-    const entries = await fs.readdir(timelinesDir);
+    // Fallback: varre as pastas de timelines manualmente
+    const entries = await fs.readdir(timelinesDir).catch(() => []);
     for (const entry of entries) {
         let candidate = path.join(timelinesDir, entry, 'draft_info.json');
         let candStat = await fs.stat(candidate).catch(() => null);
@@ -328,6 +344,8 @@ async function syncAllMeta(projectDir, projectName, durationUs) {
 async function processProjects(projectPaths, event) {
     let total = projectPaths.length;
     let current = 0;
+    let errorsCount = 0;
+    let lastError = "";
 
     for (const projPath of projectPaths) {
         current++;
@@ -337,7 +355,7 @@ async function processProjects(projectPaths, event) {
         try {
             const jsonPath = await findTimelineJson(projPath);
             if (!jsonPath) {
-                throw new Error("Arquivo de timeline (draft_info.json) não encontrado.");
+                throw new Error("Arquivo draft_info.json não encontrado ou projeto vazio.");
             }
 
             // Backup logico
@@ -358,8 +376,19 @@ async function processProjects(projectPaths, event) {
 
         } catch (err) {
             console.error(`Erro ao editar ${pName}:`, err);
+            errorsCount++;
+            lastError = err.message;
             event.sender.send('process-progress', { msg: `Erro em ${pName}: ${err.message}. Pulando...` });
+            // Da uma pequena pausa pro usuario ver o log de erro no modal 
+            await new Promise(r => setTimeout(r, 1000));
         }
+    }
+
+    if (errorsCount === total) {
+        throw new Error(`Todos os ${total} projetos falharam. Último erro: ${lastError}`);
+    } else if (errorsCount > 0) {
+        // Envia um sucesso parcial pro usuario saber
+        event.sender.send('process-progress', { msg: `Atenção: ${errorsCount} arquivos falharam e ${total - errorsCount} deram certo.` });
     }
 }
 
