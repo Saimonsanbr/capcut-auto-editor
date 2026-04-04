@@ -16,7 +16,8 @@
 
 [**⬇ Download for macOS**](https://github.com/Saimonsanbr/capcut-auto-editor/releases/latest/download/CapCut-Auto-Editor-mac.dmg)
 &nbsp;&nbsp;
-[**⬇ Download for Windows**](https://github.com/Saimonsanbr/capcut-auto-editor/releases/latest/download/CapCut-Auto-Editor-win.exe)
+[**⬇ Download for Windows**](https://github.com/Saimonsanbr/capcut-auto-editor/releases/latest/download/CapCut.Auto.Editor.Windows.exe
+)
 
 <br/>
 
