@@ -71,7 +71,9 @@ npm start
 ## How it works under the hood
 
 1. The app reads your local CapCut `Projects/com.lveditor.draft` folder.
-2. It parses the actual `timeline_layout.json` to find the active timeline UUID.
+2. It intelligently handles different CapCut schema versions depending on your OS and updates:
+   - **Modern/Windows pattern**: Finds `draft_content.json` directly in the project root.
+   - **Legacy/macOS pattern**: Follows `timeline_layout.json` to find `draft_info.json` inside the `Timelines/` directory.
 3. It creates a complete backup of your timeline JSON just in case.
 4. It iterates over your `main_video_track`, separates elements, and recalculates times.
 5. It injects new UUIDs for VFX materials (like Vignettes, Fades, and Old Comedy effects) directly into the CapCut Cache pool.
