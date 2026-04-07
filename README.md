@@ -35,6 +35,15 @@ No manual clicking. No rendering bottleneck. Just instant timeline routing.
 
 ---
 
+## Operation Modes (New in v1.0.1)
+
+CapCut Auto Editor now supports two distinct editing workflows to match your style:
+
+- **💥 Random Mode (Fully Automated):** The original behavior. The app completely ignores your existing timeline timing. It calculates your main audio track length, then randomly slices and duplicates your media pool to perfectly fill out the duration. Ideal for quick generative montages.
+- **🎯 Controlled Mode (Manual Cuts):** You do the raw cuts in CapCut exactly in rhythm with your music. The app strictly respects your manual start times and clip durations, but automates the heavy post-production by injecting transitions between your cuts, zoom-in keyframes for photos, blur and duplicated background for vertical images, vignette effects, and master fade in/out.
+
+---
+
 ## Honest intro
 
 This is a personal project. I built it because I needed to automate repetitive editing workflows on CapCut Desktop and there was no official API available.
