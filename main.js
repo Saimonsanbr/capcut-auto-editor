@@ -56,9 +56,9 @@ ipcMain.handle('get-logs', () => {
 });
 
 // Receiver for trigger magic edition batch
-ipcMain.on('process-projects', async (event, projectPaths) => {
+ipcMain.on('process-projects', async (event, projectPaths, mode) => {
   try {
-    await processProjects(projectPaths, event); // Pass event to send progress back
+    await processProjects(projectPaths, event, mode); // Pass event to send progress back
     event.sender.send('process-finished', { success: true });
   } catch (error) {
     console.error('Erro geral no processo:', error);

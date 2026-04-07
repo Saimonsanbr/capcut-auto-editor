@@ -39,9 +39,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         spinner.style.display = 'block';
         btnCloseModal.style.display = 'none';
 
-        // Envia array de strings (caminhos dos projetos)
+        // Envia array de strings (caminhos dos projetos) e o modo selecionado
         const paths = Array.from(selectedProjects);
-        window.api.processProjects(paths);
+        const mode = document.querySelector('input[name="editMode"]:checked').value;
+        window.api.processProjects(paths, mode);
     });
 
     btnCloseModal.addEventListener('click', () => {
