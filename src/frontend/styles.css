@@ -58,6 +58,55 @@ body {
     color: var(--text-muted);
 }
 
+.mode-selector {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.mode-label {
+    font-size: 14px;
+    color: var(--text-muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.toggle-group {
+    display: inline-flex;
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    padding: 4px;
+    border: 1px solid var(--border);
+}
+
+.toggle-group input[type="radio"] {
+    display: none;
+}
+
+.toggle-group label {
+    padding: 8px 20px;
+    font-size: 14px;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    font-weight: 600;
+}
+
+.toggle-group input[type="radio"]:checked + label {
+    background: linear-gradient(45deg, var(--primary), #db7093);
+    color: white;
+    box-shadow: 0 2px 8px rgba(138, 43, 226, 0.4);
+}
+
+.toggle-group label:hover:not(:checked) {
+    background-color: var(--card-hover);
+    color: var(--text-color);
+}
+
 .container {
     padding: 0 20px;
     max-width: 1200px;
