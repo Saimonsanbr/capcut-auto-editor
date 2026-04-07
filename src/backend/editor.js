@@ -89,9 +89,10 @@ function getRandomFloat(min, max) {
     return Math.random() * (max - min) + min;
 }
 
-function processTimelineData(data) {
+function processTimelineData(data, mode = 'random') {
     data.config = data.config || {};
-    data.config.video_mute = true;
+    data.config.video_mute = true; // In random mode we mute the video. In controlled we might want to keep it, but let's keep current behavior unless user says otherwise. 
+                                   // Actually, in controlled mode, if they cut carefully, they probably want original audio? The prompt doesn't ask to unmute, so I'll keep it as is.
 
     const tracks = data.tracks || [];
     let mainVideoTrack = null;
@@ -111,19 +112,33 @@ function processTimelineData(data) {
         throw new Error("Track de vídeo principal vazia ou não encontrada.");
     }
 
-    let audioDurationUs = 0;
-    if (audioTrack && audioTrack.segments) {
-        for (const seg of audioTrack.segments) {
+    let targetDur = 0;
+
+    if (mode === 'random') {
+        let audioDurationUs = 0;
+        if (audioTrack && audioTrack.segments) {
+            for (const seg of audioTrack.segments) {
+                const end = seg.target_timerange.start + seg.target_timerange.duration;
+                if (end > audioDurationUs) audioDurationUs = end;
+            }
+        }
+        if (audioDurationUs === 0) {
+            audioDurationUs = 60000000;
+        }
+        targetDur = audioDurationUs + 2500000;
+    } else {
+        // Controlled mode: targetDur is based on existing manual cuts
+        for (const seg of mainVideoTrack.segments) {
             const end = seg.target_timerange.start + seg.target_timerange.duration;
-            if (end > audioDurationUs) audioDurationUs = end;
+            if (end > targetDur) targetDur = end;
+        }
+        if (audioTrack && audioTrack.segments) {
+            for (const seg of audioTrack.segments) {
+                const end = seg.target_timerange.start + seg.target_timerange.duration;
+                if (end > targetDur) targetDur = end;
+            }
         }
     }
-
-    if (audioDurationUs === 0) {
-        audioDurationUs = 60000000;
-    }
-
-    const targetDur = audioDurationUs + 2500000;
 
     data.materials.material_animations = [];
     data.materials.transitions = [];
@@ -132,19 +147,30 @@ function processTimelineData(data) {
     let bgSegments = [];
     let fgSegments = [];
     let effectSegments = [];
-    let currentTime = 0;
+    let currentTime = 0; // Only used sequentially in random mode
     let originalSegs = [...mainVideoTrack.segments];
 
     for (let i = 0; i < originalSegs.length; i++) {
         const seg = originalSegs[i];
-        if (currentTime >= targetDur) break;
+        
+        // Random mode bounds
+        if (mode === 'random' && currentTime >= targetDur) break;
 
-        let slot = getRandomInt(4000000, 7000000);
-        let isLast = false;
+        let slot, segStart, isLast;
 
-        if (currentTime + slot >= targetDur) {
-            slot = targetDur - currentTime;
-            isLast = true;
+        if (mode === 'random') {
+            slot = getRandomInt(4000000, 7000000);
+            isLast = false;
+            if (currentTime + slot >= targetDur) {
+                slot = targetDur - currentTime;
+                isLast = true;
+            }
+            segStart = currentTime;
+        } else {
+            // Controlled mode
+            slot = seg.target_timerange.duration;
+            segStart = seg.target_timerange.start;
+            isLast = (i === originalSegs.length - 1);
         }
 
         const matId = seg.material_id;
@@ -154,21 +180,46 @@ function processTimelineData(data) {
 
         const isVideo = baseMat.has_audio === true;
 
-        // Monta background
+        // Monta background (ou clip único)
         let segBg = Object.assign({}, seg);
-        // Deep clone das referencias que vamos alterar
-        segBg.target_timerange = { start: currentTime, duration: slot };
-        segBg.volume = 0.0;
-        segBg.last_nonzero_volume = 1.0;
+        // Deep clone das referencias
+        segBg.target_timerange = { start: segStart, duration: slot };
 
-        if (isVideo) {
-            let srcDur = baseMat.duration || slot;
-            let srcStart = srcDur > slot ? getRandomInt(0, Math.max(0, srcDur - slot)) : 0;
-            segBg.source_timerange = { start: srcStart, duration: Math.min(srcDur, slot) };
-            segBg.clip = { scale: { x: 1.0, y: 1.0 }, alpha: 1.0, rotation: 0.0, transform: { x: 0.0, y: 0.0 }, flip: { vertical: false, horizontal: false } };
+        if (mode === 'random') {
+            segBg.volume = 0.0;
+            segBg.last_nonzero_volume = 1.0;
+
+            if (isVideo) {
+                let srcDur = baseMat.duration || slot;
+                let srcStart = srcDur > slot ? getRandomInt(0, Math.max(0, srcDur - slot)) : 0;
+                segBg.source_timerange = { start: srcStart, duration: Math.min(srcDur, slot) };
+                segBg.clip = { scale: { x: 1.0, y: 1.0 }, alpha: 1.0, rotation: 0.0, transform: { x: 0.0, y: 0.0 }, flip: { vertical: false, horizontal: false } };
+            } else {
+                segBg.source_timerange = { start: 0, duration: slot };
+                segBg.clip = { scale: { x: 2.1, y: 2.1 }, alpha: 0.45, rotation: 0.0, transform: { x: 0.0, y: 0.0 }, flip: { vertical: false, horizontal: false } };
+            }
         } else {
-            segBg.source_timerange = { start: 0, duration: slot };
-            segBg.clip = { scale: { x: 2.1, y: 2.1 }, alpha: 0.45, rotation: 0.0, transform: { x: 0.0, y: 0.0 }, flip: { vertical: false, horizontal: false } };
+            // Controlled mode: preserver volumes and source trims from original timeline
+            // If it's a photo, we still need to set up the blur logic bounds
+            segBg.volume = typeof seg.volume !== 'undefined' ? seg.volume : 1.0;
+            
+            if (!segBg.source_timerange) {
+                if (isVideo && baseMat.duration) {
+                    segBg.source_timerange = { start: 0, duration: Math.min(baseMat.duration, slot) };
+                } else {
+                    segBg.source_timerange = { start: 0, duration: slot };
+                }
+            }
+
+            if (!isVideo) {
+                // Photo duplicate background
+                segBg.clip = { scale: { x: 2.1, y: 2.1 }, alpha: 0.45, rotation: 0.0, transform: { x: 0.0, y: 0.0 }, flip: { vertical: false, horizontal: false } };
+            } else {
+                // Video default 
+                if (!segBg.clip) {
+                    segBg.clip = { scale: { x: 1.0, y: 1.0 }, alpha: 1.0, rotation: 0.0, transform: { x: 0.0, y: 0.0 }, flip: { vertical: false, horizontal: false } };
+                }
+            }
         }
 
         let bgExtraRefs = [];
@@ -206,7 +257,7 @@ function processTimelineData(data) {
 
                 if (Math.random() > 0.5) {
                     let chosen = Math.random() > 0.5 ? VIGNETTE_EFFECT : OLD_COMEDY_EFFECT;
-                    effectSegments.push(addEffectSegment(data, chosen, currentTime, slot));
+                    effectSegments.push(addEffectSegment(data, chosen, segStart, slot));
                 }
             } else {
                 let low = parseFloat(getRandomFloat(1.00, 1.07).toFixed(4));
@@ -219,17 +270,19 @@ function processTimelineData(data) {
 
                 if (Math.random() > 0.5) {
                     let chosen = Math.random() > 0.5 ? VIGNETTE_EFFECT : OLD_COMEDY_EFFECT;
-                    effectSegments.push(addEffectSegment(data, chosen, currentTime, slot));
+                    effectSegments.push(addEffectSegment(data, chosen, segStart, slot));
                 }
             }
         } else {
             if (Math.random() > 0.5) {
                 let chosen = Math.random() > 0.5 ? VIGNETTE_EFFECT : OLD_COMEDY_EFFECT;
-                effectSegments.push(addEffectSegment(data, chosen, currentTime, slot));
+                effectSegments.push(addEffectSegment(data, chosen, segStart, slot));
             }
         }
 
-        currentTime += slot;
+        if (mode === 'random') {
+            currentTime += slot;
+        }
     }
 
     let newTracks = [];
@@ -254,10 +307,10 @@ function processTimelineData(data) {
     }
 
     data.tracks = newTracks;
-    data.duration = currentTime;
+    data.duration = mode === 'random' ? currentTime : targetDur;
     data.update_time = Math.floor(Date.now() * 1000);
 
-    return currentTime;
+    return data.duration;
 }
 
 async function findTimelineJson(projectDir) {
@@ -341,7 +394,7 @@ async function syncAllMeta(projectDir, projectName, durationUs) {
     }
 }
 
-async function processProjects(projectPaths, event) {
+async function processProjects(projectPaths, event, mode = 'random') {
     let total = projectPaths.length;
     let current = 0;
     let errorsCount = 0;
@@ -366,7 +419,7 @@ async function processProjects(projectPaths, event) {
             let data = JSON.parse(rawData);
 
             // Process
-            const finalDur = processTimelineData(data);
+            const finalDur = processTimelineData(data, mode);
 
             // Save
             await fs.writeFile(jsonPath, JSON.stringify(data, null, 2), 'utf-8');
