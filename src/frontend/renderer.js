@@ -6,6 +6,8 @@ const LS_EFFECTS_KEY = 'cae-enabled-effects';
 const LS_TRANSITIONS_KEY = 'cae-enabled-transitions';
 const LS_EFFECT_CHANCE_KEY = 'cae-effect-chance';
 const LS_TRANSITION_CHANCE_KEY = 'cae-transition-chance';
+const LS_PROC_IMAGES_KEY = 'cae-process-images';
+const LS_PROC_VIDEOS_KEY = 'cae-process-videos';
 const DEFAULT_CHANCE = 30;
 
 function getEnabledEffects() {
@@ -88,6 +90,20 @@ function setChance(lsKey, value) {
     } catch (e) { /* segue sem persistir */ }
 }
 
+function getProcessFlag(lsKey) {
+    try {
+        const saved = localStorage.getItem(lsKey);
+        if (saved !== null) return saved === 'true';
+    } catch (e) { /* ignora, usa padrão ligado */ }
+    return true;
+}
+
+function setProcessFlag(lsKey, value) {
+    try {
+        localStorage.setItem(lsKey, String(!!value));
+    } catch (e) { /* segue sem persistir */ }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     const loadingEl = document.getElementById('loading');
     const gridEl = document.getElementById('projects-grid');
@@ -145,7 +161,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             enabledEffects: getEnabledEffects(),
             enabledTransitions: getEnabledTransitions(),
             effectChance: getChance(LS_EFFECT_CHANCE_KEY) / 100,
-            transitionChance: getChance(LS_TRANSITION_CHANCE_KEY) / 100
+            transitionChance: getChance(LS_TRANSITION_CHANCE_KEY) / 100,
+            processImages: getProcessFlag(LS_PROC_IMAGES_KEY),
+            processVideos: getProcessFlag(LS_PROC_VIDEOS_KEY)
         });
     });
 
@@ -205,6 +223,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     btnConfig.addEventListener('click', () => {
         renderEffectsList(effectsList);
         renderTransitionsList(transitionsList);
+        document.getElementById('proc-images').checked = getProcessFlag(LS_PROC_IMAGES_KEY);
+        document.getElementById('proc-videos').checked = getProcessFlag(LS_PROC_VIDEOS_KEY);
         const effectChance = document.getElementById('effect-chance');
         const effectChanceVal = document.getElementById('effect-chance-val');
         const transitionChance = document.getElementById('transition-chance');
@@ -235,6 +255,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         setEnabledEffects(readEffectsSelection(effectsList));
         setEnabledTransitions(readEffectsSelection(transitionsList));
         configModal.classList.remove('active');
+    });
+
+    // Checkboxes de tipo (imagens / vídeos)
+    const procImages = document.getElementById('proc-images');
+    const procVideos = document.getElementById('proc-videos');
+
+    procImages.addEventListener('change', () => {
+        setProcessFlag(LS_PROC_IMAGES_KEY, procImages.checked);
+    });
+
+    procVideos.addEventListener('change', () => {
+        setProcessFlag(LS_PROC_VIDEOS_KEY, procVideos.checked);
     });
 
     // Sliders de chance (valores salvos a cada ajuste)
