@@ -113,6 +113,10 @@ function getCoverScale(w, h, cw, ch, margin = 1.05) {
 function processTimelineData(data, mode = 'random', options = {}) {
     const enabledEffects = options.enabledEffects; // array de effect_id ou undefined = todos
     const enabledTransitions = options.enabledTransitions; // array de effect_id ou undefined = todas
+    // Se um tipo estiver desmarcado, proporção/duplicação ficam intactas
+    // (só transições e efeitos ainda se aplicam a ele).
+    const processImages = options.processImages !== false; // default: true
+    const processVideos = options.processVideos !== false; // default: true
     // Chance (0-1) de cada slot receber efeito / transição. Padrão 0.3 (30%).
     const effectChance = typeof options.effectChance === 'number'
         ? Math.min(1, Math.max(0, options.effectChance)) : 0.3;
@@ -206,13 +210,18 @@ function processTimelineData(data, mode = 'random', options = {}) {
 
         if (!baseMat) continue;
 
-        const isVideo = baseMat.has_audio === true;
+        // Um vídeo pode vir sem áudio (has_audio=false, ex: stock sem som),
+        // então classifica pelo tipo do material — não só pelo áudio.
+        const matType = String(baseMat.type || '').toLowerCase();
+        const isVideo = matType === 'video' || baseMat.has_audio === true;
+        const typeEnabled = isVideo ? processVideos : processImages;
         const matW = baseMat.width || 1920;
         const matH = baseMat.height || 1080;
         const is16_9 = isAspect16by9(matW, matH);
         // Fundo duplicado sempre que o material não cobre o 16:9 sozinho
         // (imagem OU vídeo fora do aspecto — ex: 9:16 vertical).
-        const needsFg = !is16_9;
+        // Se o tipo está desmarcado, sem duplicação (transição vai embaixo).
+        const needsFg = typeEnabled && !is16_9;
         const canvas = getCanvasSize(data);
         const coverScale = needsFg ? getCoverScale(matW, matH, canvas.w, canvas.h) : 1.0;
 
@@ -229,18 +238,24 @@ function processTimelineData(data, mode = 'random', options = {}) {
                 let srcDur = baseMat.duration || slot;
                 let srcStart = srcDur > slot ? getRandomInt(0, Math.max(0, srcDur - slot)) : 0;
                 segBg.source_timerange = { start: srcStart, duration: Math.min(srcDur, slot) };
-                if (needsFg) {
-                    segBg.clip = { scale: { x: coverScale, y: coverScale }, alpha: 0.45, rotation: 0.0, transform: { x: 0.0, y: 0.0 }, flip: { vertical: false, horizontal: false } };
-                } else {
-                    segBg.clip = { scale: { x: 1.0, y: 1.0 }, alpha: 1.0, rotation: 0.0, transform: { x: 0.0, y: 0.0 }, flip: { vertical: false, horizontal: false } };
+                if (typeEnabled) {
+                    if (needsFg) {
+                        segBg.clip = { scale: { x: coverScale, y: coverScale }, alpha: 0.45, rotation: 0.0, transform: { x: 0.0, y: 0.0 }, flip: { vertical: false, horizontal: false } };
+                    } else {
+                        segBg.clip = { scale: { x: 1.0, y: 1.0 }, alpha: 1.0, rotation: 0.0, transform: { x: 0.0, y: 0.0 }, flip: { vertical: false, horizontal: false } };
+                    }
                 }
+                // Se o tipo está desmarcado, mantém o clip original intacto.
             } else {
                 segBg.source_timerange = { start: 0, duration: slot };
-                if (needsFg) {
-                    segBg.clip = { scale: { x: coverScale, y: coverScale }, alpha: 0.45, rotation: 0.0, transform: { x: 0.0, y: 0.0 }, flip: { vertical: false, horizontal: false } };
-                } else {
-                    segBg.clip = { scale: { x: 2.1, y: 2.1 }, alpha: 0.45, rotation: 0.0, transform: { x: 0.0, y: 0.0 }, flip: { vertical: false, horizontal: false } };
+                if (typeEnabled) {
+                    if (needsFg) {
+                        segBg.clip = { scale: { x: coverScale, y: coverScale }, alpha: 0.45, rotation: 0.0, transform: { x: 0.0, y: 0.0 }, flip: { vertical: false, horizontal: false } };
+                    } else {
+                        segBg.clip = { scale: { x: 2.1, y: 2.1 }, alpha: 0.45, rotation: 0.0, transform: { x: 0.0, y: 0.0 }, flip: { vertical: false, horizontal: false } };
+                    }
                 }
+                // Se o tipo está desmarcado, mantém o clip original intacto.
             }
         } else {
             // Controlled mode: preserver volumes and source trims from original timeline
@@ -299,8 +314,11 @@ function processTimelineData(data, mode = 'random', options = {}) {
             }
         }
 
-        segBg.extra_material_refs = bgExtraRefs;
-        segBg.common_keyframes = [];
+        segBg.extra_material_refs = typeEnabled
+            ? bgExtraRefs
+            : [...(seg.extra_material_refs || []), ...bgExtraRefs];
+        // Tipo desmarcado: preserva os keyframes manuais (não mexe em proporção).
+        segBg.common_keyframes = typeEnabled ? [] : (seg.common_keyframes || []);
         bgSegments.push(segBg);
 
         if (needsFg) {
@@ -328,21 +346,19 @@ function processTimelineData(data, mode = 'random', options = {}) {
                 let chosen = pickRandomEffect(enabledEffects);
                 if (chosen) effectSegments.push(addEffectSegment(data, chosen, segStart, slot));
             }
-        } else if (!isVideo) {
-            // Foto 16:9 em clip único: zoom suave.
-            let low = parseFloat(getRandomFloat(1.00, 1.07).toFixed(4));
-            let high = parseFloat(getRandomFloat(1.08, 1.15).toFixed(4));
-            let [s, e] = Math.random() > 0.5 ? [low, high] : [high, low];
-
-            segBg.clip.scale = { x: s, y: s };
-            segBg.clip.alpha = 1.0;
-            segBg.common_keyframes = createScaleKeyframes(s, e, slot);
-
-            if (Math.random() < effectChance) {
-                let chosen = pickRandomEffect(enabledEffects);
-                if (chosen) effectSegments.push(addEffectSegment(data, chosen, segStart, slot));
-            }
         } else {
+            if (!isVideo && typeEnabled) {
+                // Foto 16:9 em clip único: zoom suave.
+                // (Se imagens desmarcadas, pula o zoom mas o efeito abaixo aplica.)
+                let low = parseFloat(getRandomFloat(1.00, 1.07).toFixed(4));
+                let high = parseFloat(getRandomFloat(1.08, 1.15).toFixed(4));
+                let [s, e] = Math.random() > 0.5 ? [low, high] : [high, low];
+
+                segBg.clip.scale = { x: s, y: s };
+                segBg.clip.alpha = 1.0;
+                segBg.common_keyframes = createScaleKeyframes(s, e, slot);
+            }
+
             if (Math.random() < effectChance) {
                 let chosen = pickRandomEffect(enabledEffects);
                 if (chosen) effectSegments.push(addEffectSegment(data, chosen, segStart, slot));
