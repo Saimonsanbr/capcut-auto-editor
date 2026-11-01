@@ -1,0 +1,195 @@
+{
+    "effect": [
+               {
+               "name": "inputA",
+               "viewport":[0,0,0.5,0.5],
+               "autoChangeViewport":4,
+               "vertexShader": "resource1/shader/VerticalA.vert",
+               "vUniforms": [],
+               "fragmentShader": "resource1/shader/VerticalA.frag",
+               "fUniforms": [
+                              {
+                                "name": "inputImageTexture",
+                                "type": 103,
+                                "inputTextureIndex": 0
+                                },
+                                {
+                                    "name":"progress",
+                                    "type": 3007,
+                                    "timeType": 2,
+                                    "keyframes": [
+                                        {
+                                            "time": 0.0,
+                                            "value": 0.0,
+                                            "function": "Linear"
+                                        },
+                                        {
+                                            "time": 1.0,
+                                            "value": 1.0, 
+                                            "function": "Linear"
+                                        }                                                                                                                   
+                                 ]
+                                }                                                                                                                  
+                             ]
+               },
+               {
+                "name": "inputB",
+                "viewport":[0,0,0.5,0.5],
+                "autoChangeViewport":4,
+                "vertexShader": "resource1/shader/VerticalB.vert",
+                "vUniforms": [],
+                "fragmentShader": "resource1/shader/VerticalB.frag",
+                "fUniforms": [
+                                {
+                                "name": "inputImageTexture2",
+                                "type": 103,
+                                "inputTextureIndex": 1
+                                },
+                                {
+                                    "name":"progress",
+                                    "type": 3007,
+                                    "timeType": 2,
+                                    "keyframes": [
+                                        {
+                                            "time": 0.0,
+                                            "value": 0.0,
+                                            "function": "Linear"
+                                        },
+                                        {
+                                            "time": 1.0,
+                                            "value": 1.0, 
+                                            "function": "Linear"
+                                        }                                                                                                                   
+                                ]
+                                }                                                                                                                    
+                              ]
+                },
+                {
+                    "name": "gaussianA",
+                    "viewport":[0,0,0.5,0.5],
+                    "autoChangeViewport":4,
+                    "inputEffect": ["inputA"],
+                    "vertexShader": "resource1/shader/VerticalGaussionA.vert",
+                    "vUniforms": [],
+                    "fragmentShader": "resource1/shader/VerticalGaussionA.frag",
+                    "fUniforms": [
+                                    {
+                                      "name": "inputImageTexture",
+                                      "type": 1000,
+                                      "inputEffectIndex": 0                                 
+                                    },
+                                   {
+                                       "name": "inputWidth",
+                                       "type": 200
+                                   },
+                                   {
+                                       "name": "inputHeight",
+                                       "type": 201
+                                   },
+                                   {
+                                       "name":"progress",
+                                       "type": 3007,
+                                       "timeType": 2,
+                                       "keyframes": [
+                                           {
+                                               "time": 0.0,
+                                               "value": 0.0,
+                                               "function": "Linear"
+                                           },
+                                           {
+                                               "time": 1.0,
+                                               "value": 1.0, 
+                                               "function": "Linear"
+                                           }                                                                                                                   
+                                   ]
+                                   }                                                                                                                   
+                                  ]
+                    },
+                    {
+                     "name": "gaussianB",
+                     "viewport":[0,0,0.5,0.5],
+                     "autoChangeViewport":4,
+                     "inputEffect": ["inputB"],
+                     "vertexShader": "resource1/shader/VerticalGaussionB.vert",
+                     "vUniforms": [],
+                     "fragmentShader": "resource1/shader/VerticalGaussionB.frag",
+                     "fUniforms": [
+                                     {
+                                       "name": "inputImageTexture",
+                                       "type": 1000,
+                                       "inputEffectIndex": 0                                 
+                                     },
+                                    {
+                                        "name": "inputWidth",
+                                        "type": 200
+                                    },
+                                    {
+                                        "name": "inputHeight",
+                                        "type": 201
+                                    },
+                                    {
+                                        "name":"progress",
+                                        "type": 3007,
+                                        "timeType": 2,
+                                        "keyframes": [
+                                            {
+                                                "time": 0.0,
+                                                "value": 0.0,
+                                                "function": "Linear"
+                                            },
+                                            {
+                                                "time": 1.0,
+                                                "value": 1.0, 
+                                                "function": "Linear"
+                                            }                                                                                                                   
+                                    ]
+                                    }                                                                                                                    
+                                   ]
+                     },
+                     {
+                       "name": "Mix",
+                       "inputEffect": ["gaussianA", "gaussianB"],
+                       "vertexShader": "resource1/shader/VerticalMix.vert",
+                       "vUniforms":[],
+                       "fragmentShader":"resource1/shader/VerticalMix.frag",
+                       "fUniforms": [
+                           {
+                               "name":"TexA",
+                               "type": 1000,
+                               "inputEffectIndex": 0
+                            },
+                            {
+                             "name":"TexB",
+                             "type": 1000,
+                             "inputEffectIndex": 1
+                             },
+                             {
+                                 "name": "inputWidth",
+                                 "type": 200
+                             },
+                             {
+                                 "name": "inputHeight",
+                                 "type": 201
+                             },
+                             {
+                                 "name":"progress",
+                                 "type": 3007,
+                                 "timeType": 2,
+                                 "keyframes": [
+                                     {
+                                         "time": 0.0,
+                                         "value": 0.0,
+                                         "function": "Linear"
+                                     },
+                                     {
+                                         "time": 1.0,
+                                         "value": 1.0, 
+                                         "function": "Linear"
+                                     }                                                                                                                   
+                             ]
+                             } 
+                       ]
+                       }                                 
+               ],
+    "version": 1.0
+}

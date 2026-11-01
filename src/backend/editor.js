@@ -2,7 +2,7 @@ const fs = require('fs/promises');
 const path = require('path');
 const { generateUUID, createScaleKeyframes } = require('./utils');
 const { PROJECTS_DIR } = require('./paths');
-const { VIGNETTE_EFFECT, OLD_COMEDY_EFFECT, TRANSITION_AFASTAR, TRANSITION_COMBINAR, FADE_IN_ANIM, FADE_OUT_ANIM } = require('./effects');
+const { FADE_IN_ANIM, FADE_OUT_ANIM, buildEffectAdjusts, pickRandomEffect, pickRandomTransition } = require('./effects');
 
 function addFadeAnimation(data, animDef, startOffset, duration) {
     const animId = generateUUID();
@@ -24,7 +24,8 @@ function addFadeAnimation(data, animDef, startOffset, duration) {
     return animId;
 }
 
-function addTransition(data, transitionDef, duration = 466666) {
+function addTransition(data, transitionDef) {
+    const duration = transitionDef.duration || 466666;
     const transUuid = generateUUID();
     data.materials = data.materials || {};
     data.materials.transitions = data.materials.transitions || [];
@@ -51,7 +52,7 @@ function addEffectSegment(data, effectDef, startTime, durationUs) {
         transparent_params: "", path: effectDef.path, value: 1.0,
         category_id: "100000", category_name: "Efeitos de vídeo", platform: "all",
         apply_target_type: 2, source_platform: 1, item_effect_type: 0,
-        adjust_params: effectDef.adjusts, time_range: null, enable_mask: true, effect_mask: [],
+        adjust_params: buildEffectAdjusts(effectDef), time_range: null, enable_mask: true, effect_mask: [],
         enable_video_mask_stroke: true, enable_video_mask_shadow: true
     });
 
@@ -89,7 +90,34 @@ function getRandomFloat(min, max) {
     return Math.random() * (max - min) + min;
 }
 
-function processTimelineData(data, mode = 'random') {
+function getCanvasSize(data) {
+    const c = data.canvas_config || {};
+    return { w: c.width || 1920, h: c.height || 1080 };
+}
+
+function isAspect16by9(w, h) {
+    if (!w || !h) return true;
+    return Math.abs(w / h - 16 / 9) < 0.05;
+}
+
+// Zoom exato p/ o fundo cobrir o canvas (cover + margem). Retrato/vertical
+// (h > w, ex: 9:16) tem piso de 3.5x pois o 2.1x antigo deixava faixas
+// vazias no teste prático. Materiais muito pequenos podem passar de 4x.
+function getCoverScale(w, h, cw, ch, margin = 1.05) {
+    if (!w || !h) return 3.75;
+    let s = Math.max(cw / w, ch / h) * margin;
+    if (h > w) s = Math.max(s, 3.5);
+    return parseFloat(s.toFixed(4));
+}
+
+function processTimelineData(data, mode = 'random', options = {}) {
+    const enabledEffects = options.enabledEffects; // array de effect_id ou undefined = todos
+    const enabledTransitions = options.enabledTransitions; // array de effect_id ou undefined = todas
+    // Chance (0-1) de cada slot receber efeito / transição. Padrão 0.3 (30%).
+    const effectChance = typeof options.effectChance === 'number'
+        ? Math.min(1, Math.max(0, options.effectChance)) : 0.3;
+    const transitionChance = typeof options.transitionChance === 'number'
+        ? Math.min(1, Math.max(0, options.transitionChance)) : 0.3;
     data.config = data.config || {};
     data.config.video_mute = true; // In random mode we mute the video. In controlled we might want to keep it, but let's keep current behavior unless user says otherwise. 
                                    // Actually, in controlled mode, if they cut carefully, they probably want original audio? The prompt doesn't ask to unmute, so I'll keep it as is.
@@ -179,6 +207,14 @@ function processTimelineData(data, mode = 'random') {
         if (!baseMat) continue;
 
         const isVideo = baseMat.has_audio === true;
+        const matW = baseMat.width || 1920;
+        const matH = baseMat.height || 1080;
+        const is16_9 = isAspect16by9(matW, matH);
+        // Fundo duplicado sempre que o material não cobre o 16:9 sozinho
+        // (imagem OU vídeo fora do aspecto — ex: 9:16 vertical).
+        const needsFg = !is16_9;
+        const canvas = getCanvasSize(data);
+        const coverScale = needsFg ? getCoverScale(matW, matH, canvas.w, canvas.h) : 1.0;
 
         // Monta background (ou clip único)
         let segBg = Object.assign({}, seg);
@@ -193,16 +229,30 @@ function processTimelineData(data, mode = 'random') {
                 let srcDur = baseMat.duration || slot;
                 let srcStart = srcDur > slot ? getRandomInt(0, Math.max(0, srcDur - slot)) : 0;
                 segBg.source_timerange = { start: srcStart, duration: Math.min(srcDur, slot) };
-                segBg.clip = { scale: { x: 1.0, y: 1.0 }, alpha: 1.0, rotation: 0.0, transform: { x: 0.0, y: 0.0 }, flip: { vertical: false, horizontal: false } };
+                if (needsFg) {
+                    segBg.clip = { scale: { x: coverScale, y: coverScale }, alpha: 0.45, rotation: 0.0, transform: { x: 0.0, y: 0.0 }, flip: { vertical: false, horizontal: false } };
+                } else {
+                    segBg.clip = { scale: { x: 1.0, y: 1.0 }, alpha: 1.0, rotation: 0.0, transform: { x: 0.0, y: 0.0 }, flip: { vertical: false, horizontal: false } };
+                }
             } else {
                 segBg.source_timerange = { start: 0, duration: slot };
-                segBg.clip = { scale: { x: 2.1, y: 2.1 }, alpha: 0.45, rotation: 0.0, transform: { x: 0.0, y: 0.0 }, flip: { vertical: false, horizontal: false } };
+                if (needsFg) {
+                    segBg.clip = { scale: { x: coverScale, y: coverScale }, alpha: 0.45, rotation: 0.0, transform: { x: 0.0, y: 0.0 }, flip: { vertical: false, horizontal: false } };
+                } else {
+                    segBg.clip = { scale: { x: 2.1, y: 2.1 }, alpha: 0.45, rotation: 0.0, transform: { x: 0.0, y: 0.0 }, flip: { vertical: false, horizontal: false } };
+                }
             }
         } else {
             // Controlled mode: preserver volumes and source trims from original timeline
-            // If it's a photo, we still need to set up the blur logic bounds
-            segBg.volume = typeof seg.volume !== 'undefined' ? seg.volume : 1.0;
-            
+            // Se tiver fundo duplicado, o áudio fica só na faixa de cima (fg);
+            // o fundo (bg) é mutado p/ não dobrar o som.
+            if (needsFg && isVideo) {
+                segBg.volume = 0.0;
+                segBg.last_nonzero_volume = 1.0;
+            } else {
+                segBg.volume = typeof seg.volume !== 'undefined' ? seg.volume : 1.0;
+            }
+
             if (!segBg.source_timerange) {
                 if (isVideo && baseMat.duration) {
                     segBg.source_timerange = { start: 0, duration: Math.min(baseMat.duration, slot) };
@@ -211,11 +261,16 @@ function processTimelineData(data, mode = 'random') {
                 }
             }
 
-            if (!isVideo) {
-                // Photo duplicate background
-                segBg.clip = { scale: { x: 2.1, y: 2.1 }, alpha: 0.45, rotation: 0.0, transform: { x: 0.0, y: 0.0 }, flip: { vertical: false, horizontal: false } };
+            if (needsFg) {
+                // Fundo duplicado (imagem ou vídeo fora de 16:9): cobre o canvas
+                segBg.clip = { scale: { x: coverScale, y: coverScale }, alpha: 0.45, rotation: 0.0, transform: { x: 0.0, y: 0.0 }, flip: { vertical: false, horizontal: false } };
+            } else if (!isVideo) {
+                // Foto 16:9: segue como clip único (zoom definido abaixo)
+                if (!segBg.clip) {
+                    segBg.clip = { scale: { x: 1.0, y: 1.0 }, alpha: 1.0, rotation: 0.0, transform: { x: 0.0, y: 0.0 }, flip: { vertical: false, horizontal: false } };
+                }
             } else {
-                // Video default 
+                // Video 16:9 default
                 if (!segBg.clip) {
                     segBg.clip = { scale: { x: 1.0, y: 1.0 }, alpha: 1.0, rotation: 0.0, transform: { x: 0.0, y: 0.0 }, flip: { vertical: false, horizontal: false } };
                 }
@@ -229,54 +284,68 @@ function processTimelineData(data, mode = 'random') {
         if (isLast) {
             bgExtraRefs.push(addFadeAnimation(data, FADE_OUT_ANIM, Math.max(0, slot - 500000), 500000));
         }
-        if (!isLast && Math.random() > 0.5) {
-            bgExtraRefs.push(addTransition(data, Math.random() > 0.5 ? TRANSITION_AFASTAR : TRANSITION_COMBINAR));
+        // Transição: se o slot tem faixa dupla (fg+bg), ela vai na faixa de
+        // CIMA (fg) — na de baixo o CapCut não renderiza. Só vai na faixa de
+        // baixo quando for clip único (sem fg).
+        let pendingTransition = null;
+        if (!isLast && Math.random() < transitionChance) {
+            const chosenTrans = pickRandomTransition(enabledTransitions);
+            if (chosenTrans) {
+                pendingTransition = addTransition(data, chosenTrans);
+                if (!needsFg) {
+                    bgExtraRefs.push(pendingTransition);
+                    pendingTransition = null;
+                }
+            }
         }
 
         segBg.extra_material_refs = bgExtraRefs;
         segBg.common_keyframes = [];
         bgSegments.push(segBg);
 
-        if (!isVideo) {
-            let w = baseMat.width || 1920;
-            let h = baseMat.height || 1080;
-            let is16_9 = Math.abs((h ? w / h : 1.777) - 1.777) < 0.05;
+        if (needsFg) {
+            // Faixa de cima: material nítido com leve zoom animado (imagem e vídeo).
+            let segFg = Object.assign({}, segBg, { clip: {} });
+            segFg.id = generateUUID();
+            segFg.extra_material_refs = [];
+            if (pendingTransition) {
+                segFg.extra_material_refs.push(pendingTransition);
+            }
+            // Em controlled mode o áudio original fica na faixa de cima.
+            if (mode !== 'random' && isVideo) {
+                segFg.volume = typeof seg.volume !== 'undefined' ? seg.volume : 1.0;
+            }
 
-            if (!is16_9) {
-                let segFg = Object.assign({}, segBg, { clip: {} });
-                segFg.id = generateUUID();
-                segFg.extra_material_refs = [];
+            let low = parseFloat(getRandomFloat(0.70, 0.80).toFixed(4));
+            let high = parseFloat(getRandomFloat(0.81, 0.90).toFixed(4));
+            let [s, e] = Math.random() > 0.5 ? [low, high] : [high, low];
 
-                let low = parseFloat(getRandomFloat(0.70, 0.80).toFixed(4));
-                let high = parseFloat(getRandomFloat(0.81, 0.90).toFixed(4));
-                let [s, e] = Math.random() > 0.5 ? [low, high] : [high, low];
+            segFg.clip = { scale: { x: s, y: s }, alpha: 1.0, rotation: 0.0, transform: { x: 0.0, y: 0.0 }, flip: { vertical: false, horizontal: false } };
+            segFg.common_keyframes = createScaleKeyframes(s, e, slot);
+            fgSegments.push(segFg);
 
-                segFg.clip = { scale: { x: s, y: s }, alpha: 1.0, rotation: 0.0, transform: { x: 0.0, y: 0.0 }, flip: { vertical: false, horizontal: false } };
-                segFg.common_keyframes = createScaleKeyframes(s, e, slot);
-                fgSegments.push(segFg);
+            if (Math.random() < effectChance) {
+                let chosen = pickRandomEffect(enabledEffects);
+                if (chosen) effectSegments.push(addEffectSegment(data, chosen, segStart, slot));
+            }
+        } else if (!isVideo) {
+            // Foto 16:9 em clip único: zoom suave.
+            let low = parseFloat(getRandomFloat(1.00, 1.07).toFixed(4));
+            let high = parseFloat(getRandomFloat(1.08, 1.15).toFixed(4));
+            let [s, e] = Math.random() > 0.5 ? [low, high] : [high, low];
 
-                if (Math.random() > 0.5) {
-                    let chosen = Math.random() > 0.5 ? VIGNETTE_EFFECT : OLD_COMEDY_EFFECT;
-                    effectSegments.push(addEffectSegment(data, chosen, segStart, slot));
-                }
-            } else {
-                let low = parseFloat(getRandomFloat(1.00, 1.07).toFixed(4));
-                let high = parseFloat(getRandomFloat(1.08, 1.15).toFixed(4));
-                let [s, e] = Math.random() > 0.5 ? [low, high] : [high, low];
+            segBg.clip.scale = { x: s, y: s };
+            segBg.clip.alpha = 1.0;
+            segBg.common_keyframes = createScaleKeyframes(s, e, slot);
 
-                segBg.clip.scale = { x: s, y: s };
-                segBg.clip.alpha = 1.0;
-                segBg.common_keyframes = createScaleKeyframes(s, e, slot);
-
-                if (Math.random() > 0.5) {
-                    let chosen = Math.random() > 0.5 ? VIGNETTE_EFFECT : OLD_COMEDY_EFFECT;
-                    effectSegments.push(addEffectSegment(data, chosen, segStart, slot));
-                }
+            if (Math.random() < effectChance) {
+                let chosen = pickRandomEffect(enabledEffects);
+                if (chosen) effectSegments.push(addEffectSegment(data, chosen, segStart, slot));
             }
         } else {
-            if (Math.random() > 0.5) {
-                let chosen = Math.random() > 0.5 ? VIGNETTE_EFFECT : OLD_COMEDY_EFFECT;
-                effectSegments.push(addEffectSegment(data, chosen, segStart, slot));
+            if (Math.random() < effectChance) {
+                let chosen = pickRandomEffect(enabledEffects);
+                if (chosen) effectSegments.push(addEffectSegment(data, chosen, segStart, slot));
             }
         }
 
@@ -394,7 +463,7 @@ async function syncAllMeta(projectDir, projectName, durationUs) {
     }
 }
 
-async function processProjects(projectPaths, event, mode = 'random') {
+async function processProjects(projectPaths, event, mode = 'random', options = {}) {
     let total = projectPaths.length;
     let current = 0;
     let errorsCount = 0;
@@ -419,7 +488,7 @@ async function processProjects(projectPaths, event, mode = 'random') {
             let data = JSON.parse(rawData);
 
             // Process
-            const finalDur = processTimelineData(data, mode);
+            const finalDur = processTimelineData(data, mode, options);
 
             // Save
             await fs.writeFile(jsonPath, JSON.stringify(data, null, 2), 'utf-8');

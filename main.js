@@ -5,6 +5,7 @@ const path = require('path');
 const { getProjects } = require('./src/backend/projects');
 const { processProjects } = require('./src/backend/editor');
 const { getLogs } = require('./src/backend/logger');
+const { VIDEO_EFFECT_POOL, TRANSITION_POOL } = require('./src/backend/effects');
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -55,10 +56,18 @@ ipcMain.handle('get-logs', () => {
   return getLogs();
 });
 
+ipcMain.handle('get-effects', () => {
+  return VIDEO_EFFECT_POOL.map(e => ({ effect_id: e.effect_id, name: e.name }));
+});
+
+ipcMain.handle('get-transitions', () => {
+  return TRANSITION_POOL.map(t => ({ effect_id: t.effect_id, name: t.name }));
+});
+
 // Receiver for trigger magic edition batch
-ipcMain.on('process-projects', async (event, projectPaths, mode) => {
+ipcMain.on('process-projects', async (event, projectPaths, mode, options) => {
   try {
-    await processProjects(projectPaths, event, mode); // Pass event to send progress back
+    await processProjects(projectPaths, event, mode, options || {}); // Pass event to send progress back
     event.sender.send('process-finished', { success: true });
   } catch (error) {
     console.error('Erro geral no processo:', error);

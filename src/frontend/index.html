@@ -10,6 +10,9 @@
     <header class="header">
         <div class="header-content">
             <h1>CapCut Auto Editor</h1>
+            <div id="btn-config" class="config-icon" title="Configurar efeitos da edição">
+                <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.5-0.41h-3.8 c-0.27,0-0.47,0.17-0.5,0.41L9.22,5.35C8.63,5.59,8.1,5.91,7.6,6.29L5.21,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.7,8.87 c-0.11,0.21-0.06,0.47,0.12,0.61l2.03,1.58C4.8,11.36,4.78,11.68,4.78,12s0.02,0.64,0.07,0.94l-2.03,1.58c-0.18,0.14-0.23,0.41-0.12,0.61 l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54c0.05,0.24,0.24,0.41,0.5,0.41h3.8 c0.27,0,0.47-0.17,0.5-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32 c0.11-0.21,0.06-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6 S13.98,15.6,12,15.6z"/></svg>
+            </div>
             <div id="btn-logs" class="logs-icon" title="Ver logs do sistema">
                 <svg viewBox="0 0 24 24"><path d="M14 2H6C4.89 2 4 2.89 4 4V20C4 21.11 4.89 22 6 22H18C19.11 22 20 21.11 20 20V8L14 2M16 18H8V16H16V18M16 14H8V12H16V14M13 9V3.5L18.5 9H13Z"/></svg>
             </div>
@@ -47,6 +50,32 @@
             <div id="logs-container" class="logs-container">
             </div>
             <button id="btn-close-logs" class="btn-secondary">Fechar</button>
+        </div>
+    </div>
+
+    <!-- Modal de Config de Efeitos -->
+    <div id="config-modal" class="modal">
+        <div class="modal-content config-content">
+            <h2>Efeitos da Edição</h2>
+            <p>Desmarque os efeitos que você NÃO quer usar. O sorteio continua aleatório, só entre os marcados.</p>
+            <div class="chance-row">
+                <label for="effect-chance">Chance de efeito por clipe: <span id="effect-chance-val">30%</span></label>
+                <input type="range" id="effect-chance" min="0" max="100" step="5" value="30">
+            </div>
+            <div class="chance-row">
+                <label for="transition-chance">Chance de transição por clipe: <span id="transition-chance-val">30%</span></label>
+                <input type="range" id="transition-chance" min="0" max="100" step="5" value="30">
+            </div>
+            <h3 class="config-subtitle">Efeitos de vídeo</h3>
+            <div id="effects-list" class="effects-list">
+            </div>
+            <h3 class="config-subtitle">Transições</h3>
+            <div id="transitions-list" class="effects-list">
+            </div>
+            <div class="config-actions">
+                <button id="btn-all-effects" class="btn-secondary">Marcar todos</button>
+                <button id="btn-close-config" class="btn-primary btn-small">Salvar</button>
+            </div>
         </div>
     </div>
 

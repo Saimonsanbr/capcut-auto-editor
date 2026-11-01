@@ -1,0 +1,78 @@
+[
+    {
+        "ClassName": "AETools",
+        "Super": "",
+        "FilePath": "lua/SeekModeScript.lua",
+        "FileAbsPath": "/Users/bytedance/Downloads/\u7ad6\u5411\u6a21\u7ccaII/AmazingFeature/lua/SeekModeScript.lua",
+        "Properties": [],
+        "Methods": [
+            {
+                "FuncName": "new",
+                "Params": [],
+                "Comment": ""
+            },
+            {
+                "FuncName": "_remap01",
+                "Params": [],
+                "Comment": ""
+            },
+            {
+                "FuncName": "_cubicBezier",
+                "Params": [],
+                "Comment": ""
+            },
+            {
+                "FuncName": "_cubicBezier01",
+                "Params": [],
+                "Comment": ""
+            },
+            {
+                "FuncName": "_getBezier01X",
+                "Params": [],
+                "Comment": ""
+            },
+            {
+                "FuncName": "_mix",
+                "Params": [],
+                "Comment": ""
+            },
+            {
+                "FuncName": "SetAllFrame",
+                "Params": [],
+                "Comment": ""
+            },
+            {
+                "FuncName": "GetVal",
+                "Params": [],
+                "Comment": ""
+            },
+            {
+                "FuncName": "test",
+                "Params": [],
+                "Comment": ""
+            },
+            {
+                "FuncName": "new",
+                "Params": [],
+                "Comment": ""
+            },
+            {
+                "FuncName": "onStart",
+                "Params": [],
+                "Comment": ""
+            },
+            {
+                "FuncName": "onUpdate",
+                "Params": [],
+                "Comment": ""
+            },
+            {
+                "FuncName": "seekToTime",
+                "Params": [],
+                "Comment": ""
+            }
+        ],
+        "Comment": "",
+        "ExportFiles": []
+    }
+]

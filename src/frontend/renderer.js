@@ -1,5 +1,92 @@
 let selectedProjects = new Set();
 let isProcessing = false;
+let allEffects = [];
+let allTransitions = [];
+const LS_EFFECTS_KEY = 'cae-enabled-effects';
+const LS_TRANSITIONS_KEY = 'cae-enabled-transitions';
+const LS_EFFECT_CHANCE_KEY = 'cae-effect-chance';
+const LS_TRANSITION_CHANCE_KEY = 'cae-transition-chance';
+const DEFAULT_CHANCE = 30;
+
+function getEnabledEffects() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(LS_EFFECTS_KEY) || 'null');
+        if (Array.isArray(saved)) {
+            // Filtra ids que ainda existem (se um efeito for removido do app, some da lista)
+            const known = new Set(allEffects.map(e => e.effect_id));
+            const filtered = saved.filter(id => known.size === 0 || known.has(id));
+            if (filtered.length > 0 || saved.length === 0) return filtered;
+        }
+    } catch (e) { /* ignora e usa todos */ }
+    return allEffects.map(e => e.effect_id);
+}
+
+function setEnabledEffects(ids) {
+    try {
+        localStorage.setItem(LS_EFFECTS_KEY, JSON.stringify(ids));
+    } catch (e) { /* storage indisponível, segue sem persistir */ }
+}
+
+function renderEffectsList(container) {
+    renderCheckList(container, allEffects, new Set(getEnabledEffects()));
+}
+
+function getEnabledTransitions() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(LS_TRANSITIONS_KEY) || 'null');
+        if (Array.isArray(saved)) {
+            const known = new Set(allTransitions.map(t => t.effect_id));
+            const filtered = saved.filter(id => known.size === 0 || known.has(id));
+            if (filtered.length > 0 || saved.length === 0) return filtered;
+        }
+    } catch (e) { /* ignora e usa todas */ }
+    return allTransitions.map(t => t.effect_id);
+}
+
+function setEnabledTransitions(ids) {
+    try {
+        localStorage.setItem(LS_TRANSITIONS_KEY, JSON.stringify(ids));
+    } catch (e) { /* storage indisponível, segue sem persistir */ }
+}
+
+function renderTransitionsList(container) {
+    renderCheckList(container, allTransitions, new Set(getEnabledTransitions()));
+}
+
+function renderCheckList(container, items, enabled) {
+    container.innerHTML = '';
+    if (items.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-muted);">Nenhum item carregado.</p>';
+        return;
+    }
+    items.forEach(it => {
+        const label = document.createElement('label');
+        label.className = 'effect-item';
+        const checked = enabled.has(it.effect_id) ? 'checked' : '';
+        label.innerHTML = `<input type="checkbox" data-effect-id="${it.effect_id}" ${checked}> <span>${it.name}</span>`;
+        container.appendChild(label);
+    });
+}
+
+function readEffectsSelection(container) {
+    return Array.from(container.querySelectorAll('input[type="checkbox"]'))
+        .filter(cb => cb.checked)
+        .map(cb => cb.dataset.effectId);
+}
+
+function getChance(lsKey) {
+    try {
+        const v = parseInt(localStorage.getItem(lsKey), 10);
+        if (!isNaN(v)) return Math.min(100, Math.max(0, v));
+    } catch (e) { /* ignora */ }
+    return DEFAULT_CHANCE;
+}
+
+function setChance(lsKey, value) {
+    try {
+        localStorage.setItem(lsKey, String(value));
+    } catch (e) { /* segue sem persistir */ }
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
     const loadingEl = document.getElementById('loading');
@@ -30,6 +117,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     const progressMsg = document.getElementById('progress-msg');
     const spinner = document.querySelector('.spinner');
 
+    // Carrega catálogos (para a engrenagem de config)
+    try {
+        allEffects = await window.api.getEffects();
+    } catch (e) {
+        allEffects = [];
+    }
+    try {
+        allTransitions = await window.api.getTransitions();
+    } catch (e) {
+        allTransitions = [];
+    }
+
     btnMagic.addEventListener('click', () => {
         if (selectedProjects.size === 0 || isProcessing) return;
         
@@ -39,10 +138,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         spinner.style.display = 'block';
         btnCloseModal.style.display = 'none';
 
-        // Envia array de strings (caminhos dos projetos) e o modo selecionado
+        // Envia array de strings (caminhos dos projetos), o modo selecionado e as configs
         const paths = Array.from(selectedProjects);
         const mode = document.querySelector('input[name="editMode"]:checked').value;
-        window.api.processProjects(paths, mode);
+        window.api.processProjects(paths, mode, {
+            enabledEffects: getEnabledEffects(),
+            enabledTransitions: getEnabledTransitions(),
+            effectChance: getChance(LS_EFFECT_CHANCE_KEY) / 100,
+            transitionChance: getChance(LS_TRANSITION_CHANCE_KEY) / 100
+        });
     });
 
     btnCloseModal.addEventListener('click', () => {
@@ -88,6 +192,65 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     btnCloseLogs.addEventListener('click', () => {
         logsModal.classList.remove('active');
+    });
+
+    // Lógica do Modal de Config (engrenagem)
+    const btnConfig = document.getElementById('btn-config');
+    const configModal = document.getElementById('config-modal');
+    const btnCloseConfig = document.getElementById('btn-close-config');
+    const btnAllEffects = document.getElementById('btn-all-effects');
+    const effectsList = document.getElementById('effects-list');
+    const transitionsList = document.getElementById('transitions-list');
+
+    btnConfig.addEventListener('click', () => {
+        renderEffectsList(effectsList);
+        renderTransitionsList(transitionsList);
+        const effectChance = document.getElementById('effect-chance');
+        const effectChanceVal = document.getElementById('effect-chance-val');
+        const transitionChance = document.getElementById('transition-chance');
+        const transitionChanceVal = document.getElementById('transition-chance-val');
+        effectChance.value = getChance(LS_EFFECT_CHANCE_KEY);
+        effectChanceVal.innerText = `${effectChance.value}%`;
+        transitionChance.value = getChance(LS_TRANSITION_CHANCE_KEY);
+        transitionChanceVal.innerText = `${transitionChance.value}%`;
+        configModal.classList.add('active');
+    });
+
+    effectsList.addEventListener('change', () => {
+        setEnabledEffects(readEffectsSelection(effectsList));
+    });
+
+    transitionsList.addEventListener('change', () => {
+        setEnabledTransitions(readEffectsSelection(transitionsList));
+    });
+
+    btnAllEffects.addEventListener('click', () => {
+        effectsList.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = true; });
+        transitionsList.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = true; });
+        setEnabledEffects(readEffectsSelection(effectsList));
+        setEnabledTransitions(readEffectsSelection(transitionsList));
+    });
+
+    btnCloseConfig.addEventListener('click', () => {
+        setEnabledEffects(readEffectsSelection(effectsList));
+        setEnabledTransitions(readEffectsSelection(transitionsList));
+        configModal.classList.remove('active');
+    });
+
+    // Sliders de chance (valores salvos a cada ajuste)
+    const effectChanceInput = document.getElementById('effect-chance');
+    const effectChanceVal = document.getElementById('effect-chance-val');
+    const transitionChanceInput = document.getElementById('transition-chance');
+    const transitionChanceVal = document.getElementById('transition-chance-val');
+
+    effectChanceInput.addEventListener('input', () => {
+        effectChanceVal.innerText = `${effectChanceInput.value}%`;
+        setChance(LS_EFFECT_CHANCE_KEY, parseInt(effectChanceInput.value, 10));
+    });
+
+    transitionChanceInput.addEventListener('input', () => {
+        transitionChanceVal.innerText = `${transitionChanceInput.value}%`;
+        setChance(LS_TRANSITION_CHANCE_KEY, parseInt(transitionChanceInput.value, 10));
     });
 
     // Listeners do Backend de Edição

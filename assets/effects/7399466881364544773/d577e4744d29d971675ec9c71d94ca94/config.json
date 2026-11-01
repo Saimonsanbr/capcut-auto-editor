@@ -1,0 +1,15 @@
+{
+	"effect" : 
+	{
+		"Link" : 
+		[
+			{
+				"path" : "AmazingFeature/",
+				"type" : "AmazingFeature",
+				"zorder" : 8011
+			}
+		]
+	},
+	"name" : "Editor_Sticker_Config_TAG_Rb5cNnbdvbpbG3cxbybSBcbeKd7b",
+	"version" : "6.6.0"
+}

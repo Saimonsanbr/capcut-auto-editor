@@ -1,0 +1,6 @@
+{
+    "transition": { 
+            "defaultDura": 0.66,
+            "isOverlap": true
+        }
+}

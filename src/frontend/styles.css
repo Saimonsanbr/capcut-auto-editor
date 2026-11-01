@@ -346,6 +346,128 @@ body {
     fill: var(--primary);
 }
 
+.config-icon {
+    width: 32px;
+    height: 32px;
+    fill: var(--text-muted);
+    cursor: pointer;
+    transition: fill 0.2s, transform 0.3s;
+    margin-top: -5px;
+}
+
+.config-icon:hover {
+    fill: var(--primary);
+    transform: rotate(30deg);
+}
+
+.config-content {
+    width: 420px;
+    max-width: 95%;
+    text-align: left;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+.config-content h2 {
+    text-align: center;
+}
+
+.config-content p {
+    text-align: center;
+}
+
+.effects-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+    text-align: left;
+}
+
+.effect-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #222;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 15px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.effect-item:hover {
+    border-color: var(--primary);
+}
+
+.effect-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.chance-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: #222;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    text-align: left;
+}
+
+.chance-row label {
+    font-size: 14px;
+    color: var(--text-color);
+}
+
+.chance-row label span {
+    font-weight: bold;
+    color: var(--primary);
+}
+
+.chance-row input[type="range"] {
+    width: 100%;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.config-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    position: sticky;
+    bottom: 0;
+    background-color: var(--card-bg);
+    padding: 12px 0 4px;
+}
+
+.config-subtitle {
+    font-size: 14px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 12px 0 8px;
+    text-align: left;
+}
+
+.config-actions .btn-secondary {
+    margin-top: 0;
+}
+
+.btn-small {
+    padding: 10px 20px;
+    font-size: 14px;
+    margin-top: 0;
+}
+
 .logs-content {
     width: 600px;
     max-width: 95%;

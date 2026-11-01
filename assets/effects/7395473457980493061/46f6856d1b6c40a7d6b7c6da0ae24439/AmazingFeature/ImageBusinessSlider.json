@@ -1,0 +1,33 @@
+{
+	"ImageBusinessSlider" : 
+	{
+		"LV" : 
+		{
+			"filter" : 
+			{
+				"materialValue" : null,
+				"sliderIntensity" : 0.0
+			},
+			"horizontal_shift" : 
+			{
+				"materialValue" : null,
+				"sliderIntensity" : 50.0
+			},
+			"size" : 
+			{
+				"materialValue" : null,
+				"sliderIntensity" : 100.0
+			},
+			"texture" : 
+			{
+				"materialValue" : null,
+				"sliderIntensity" : 0.0
+			},
+			"vertical_shift" : 
+			{
+				"materialValue" : null,
+				"sliderIntensity" : 45.700000762939453
+			}
+		}
+	}
+}
