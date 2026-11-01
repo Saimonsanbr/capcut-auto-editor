@@ -174,7 +174,12 @@ function processTimelineData(data, mode = 'random', options = {}) {
 
     data.materials.material_animations = [];
     data.materials.transitions = [];
-    data.materials.video_effects = [];
+    // No controlado, efeitos pré-existentes (dentro e em cima) são mantidos:
+    // o pool não é zerado (só adiciona os novos). No random, zera como antes.
+    if (mode === 'random') {
+        data.materials.video_effects = [];
+    }
+    const preexistingEffectIds = new Set((data.materials.video_effects || []).map(v => v.id));
 
     let bgSegments = [];
     let fgSegments = [];
@@ -218,6 +223,9 @@ function processTimelineData(data, mode = 'random', options = {}) {
         const matW = baseMat.width || 1920;
         const matH = baseMat.height || 1080;
         const is16_9 = isAspect16by9(matW, matH);
+        // Se o clipe já tem efeito "dentro" (bound), não sorteia outro p/ ele.
+        // (Efeitos "em cima" são ignorados nesta regra.)
+        const hasBoundEffect = (seg.extra_material_refs || []).some(r => preexistingEffectIds.has(r));
         // Fundo duplicado sempre que o material não cobre o 16:9 sozinho
         // (imagem OU vídeo fora do aspecto — ex: 9:16 vertical).
         // Se o tipo está desmarcado, sem duplicação (transição vai embaixo).
@@ -314,9 +322,10 @@ function processTimelineData(data, mode = 'random', options = {}) {
             }
         }
 
-        segBg.extra_material_refs = typeEnabled
-            ? bgExtraRefs
-            : [...(seg.extra_material_refs || []), ...bgExtraRefs];
+        // Refs de efeitos "dentro" (bound) pré-existentes são mantidas;
+        // refs antigas de transição/animação são descartadas (o app recria as dele).
+        const keptBoundRefs = (seg.extra_material_refs || []).filter(r => preexistingEffectIds.has(r));
+        segBg.extra_material_refs = [...keptBoundRefs, ...bgExtraRefs];
         // Tipo desmarcado: preserva os keyframes manuais (não mexe em proporção).
         segBg.common_keyframes = typeEnabled ? [] : (seg.common_keyframes || []);
         bgSegments.push(segBg);
@@ -342,7 +351,7 @@ function processTimelineData(data, mode = 'random', options = {}) {
             segFg.common_keyframes = createScaleKeyframes(s, e, slot);
             fgSegments.push(segFg);
 
-            if (Math.random() < effectChance) {
+            if (!hasBoundEffect && Math.random() < effectChance) {
                 let chosen = pickRandomEffect(enabledEffects);
                 if (chosen) effectSegments.push(addEffectSegment(data, chosen, segStart, slot));
             }
@@ -359,7 +368,7 @@ function processTimelineData(data, mode = 'random', options = {}) {
                 segBg.common_keyframes = createScaleKeyframes(s, e, slot);
             }
 
-            if (Math.random() < effectChance) {
+            if (!hasBoundEffect && Math.random() < effectChance) {
                 let chosen = pickRandomEffect(enabledEffects);
                 if (chosen) effectSegments.push(addEffectSegment(data, chosen, segStart, slot));
             }
@@ -386,6 +395,12 @@ function processTimelineData(data, mode = 'random', options = {}) {
             id: generateUUID(), type: "effect", attribute: 0, flag: 0,
             name: "", is_default_name: true, segments: effectSegments
         });
+    }
+    if (mode === 'controlled') {
+        // Mantém as faixas de efeito pré-existentes ("em cima") como estão.
+        for (const t of tracks) {
+            if (t.type === 'effect') newTracks.push(t);
+        }
     }
     if (audioTrack) {
         newTracks.push(audioTrack);
