@@ -1,6 +1,6 @@
 {
   "name": "app_electron",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -20,11 +20,18 @@
     },
     "mac": {
       "category": "public.app-category.video",
-      "icon": "build/icon.png"
+      "icon": "build/icon.png",
+      "target": ["dmg"]
+    },
+    "dmg": {
+      "artifactName": "CapCut-Auto-Editor-mac.${ext}"
     },
     "win": {
       "target": "nsis",
       "icon": "build/icon.png"
+    },
+    "nsis": {
+      "artifactName": "CapCut.Auto.Editor.Windows.${ext}"
     },
     "files": [
       "main.js",
