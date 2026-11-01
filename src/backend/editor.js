@@ -1,6 +1,6 @@
 const fs = require('fs/promises');
 const path = require('path');
-const { generateUUID, createScaleKeyframes } = require('./utils');
+const { generateUUID, createScaleKeyframes, createPanKeyframes } = require('./utils');
 const { PROJECTS_DIR } = require('./paths');
 const { FADE_IN_ANIM, FADE_OUT_ANIM, buildEffectAdjusts, pickRandomEffect, pickRandomTransition } = require('./effects');
 
@@ -103,10 +103,11 @@ function isAspect16by9(w, h) {
 // Zoom exato p/ o fundo cobrir o canvas (cover + margem). Retrato/vertical
 // (h > w, ex: 9:16) tem piso de 3.5x pois o 2.1x antigo deixava faixas
 // vazias no teste prático. Materiais muito pequenos podem passar de 4x.
-function getCoverScale(w, h, cw, ch, margin = 1.05) {
+// applyFloor=false desliga o piso (usado no cálculo do pan de fotos grandes).
+function getCoverScale(w, h, cw, ch, margin = 1.05, applyFloor = true) {
     if (!w || !h) return 3.75;
     let s = Math.max(cw / w, ch / h) * margin;
-    if (h > w) s = Math.max(s, 3.5);
+    if (applyFloor && h > w) s = Math.max(s, 3.5);
     return parseFloat(s.toFixed(4));
 }
 
@@ -226,12 +227,23 @@ function processTimelineData(data, mode = 'random', options = {}) {
         // Se o clipe já tem efeito "dentro" (bound), não sorteia outro p/ ele.
         // (Efeitos "em cima" são ignorados nesta regra.)
         const hasBoundEffect = (seg.extra_material_refs || []).some(r => preexistingEffectIds.has(r));
-        // Fundo duplicado sempre que o material não cobre o 16:9 sozinho
-        // (imagem OU vídeo fora do aspecto — ex: 9:16 vertical).
-        // Se o tipo está desmarcado, sem duplicação (transição vai embaixo).
-        const needsFg = typeEnabled && !is16_9;
+        // Imagem pequena (menor lado < 500, qualquer formato): sempre dual
+        // (bg + fg), senão fica borrada/pixelada. Imagem grande segue o
+        // formato: pan se fora do 16:9, zoom parado se 16:9.
+        const minDim = Math.min(matW, matH);
+        const isSmallImage = !isVideo && minDim < 500;
+        // Imagem grande fora do 16:9: sorteia entre dual clássico e pan novo.
+        const usePan = !isVideo && !is16_9 && !isSmallImage && Math.random() > 0.5;
+        // Fundo duplicado (bg + fg): vídeo fora do 16:9, imagem pequena
+        // (mesmo em 16:9, p/ não pixelar), ou imagem grande que não tirou pan.
+        // Imagem grande com pan nunca duplica. Se o tipo está desmarcado,
+        // sem duplicação (transição vai embaixo).
+        const needsFg = typeEnabled && (isVideo ? !is16_9 : (isSmallImage || (!is16_9 && !usePan)));
         const canvas = getCanvasSize(data);
-        const coverScale = needsFg ? getCoverScale(matW, matH, canvas.w, canvas.h) : 1.0;
+        // Fundo duplicado: cobre o canvas com folga e nunca fica pequeno —
+        // piso de 2.0x (cover calculado sozinho dá ~1.0x em imagens próximas
+        // do 16:9 e o fundo fica visualmente pequeno atrás da de cima).
+        const coverScale = needsFg ? Math.max(getCoverScale(matW, matH, canvas.w, canvas.h), 2.0) : 1.0;
 
         // Monta background (ou clip único)
         let segBg = Object.assign({}, seg);
@@ -356,9 +368,28 @@ function processTimelineData(data, mode = 'random', options = {}) {
                 if (chosen) effectSegments.push(addEffectSegment(data, chosen, segStart, slot));
             }
         } else {
-            if (!isVideo && typeEnabled) {
-                // Foto 16:9 em clip único: zoom suave.
-                // (Se imagens desmarcadas, pula o zoom mas o efeito abaixo aplica.)
+            if (!isVideo && typeEnabled && usePan) {
+                // Pan vertical — zoom fixo grande (sem keyframes de zoom) +
+                // movimento Y lento (cima↔baixo, direção sorteada).
+                // Retrato/vertical: 3.4–4.0 sorteado (segurança); senão cover×1.35.
+                let panZoom;
+                if (matH > matW) {
+                    panZoom = parseFloat(getRandomFloat(3.4, 4.0).toFixed(4));
+                } else {
+                    const rawCover = getCoverScale(matW, matH, canvas.w, canvas.h, 1.05, false);
+                    panZoom = parseFloat((rawCover * 1.35).toFixed(4));
+                }
+                const excess = (matH * panZoom - canvas.h) / canvas.h;
+                const amp = parseFloat(Math.min(0.7, Math.max(0.15, excess * 0.6)).toFixed(4));
+                let startY = -amp / 2, endY = amp / 2;
+                if (Math.random() > 0.5) { startY = amp / 2; endY = -amp / 2; }
+                startY = parseFloat(startY.toFixed(4));
+                endY = parseFloat(endY.toFixed(4));
+                segBg.clip = { scale: { x: panZoom, y: panZoom }, alpha: 1.0, rotation: 0.0, transform: { x: 0.0, y: endY }, flip: { vertical: false, horizontal: false } };
+                segBg.common_keyframes = createPanKeyframes(panZoom, startY, endY, slot);
+            } else if (!isVideo && typeEnabled) {
+                // Foto 16:9 grande em clip único: zoom suave.
+                // (Foto pequena vai p/ dual acima; tipo desmarcado pula o zoom.)
                 let low = parseFloat(getRandomFloat(1.00, 1.07).toFixed(4));
                 let high = parseFloat(getRandomFloat(1.08, 1.15).toFixed(4));
                 let [s, e] = Math.random() > 0.5 ? [low, high] : [high, low];
